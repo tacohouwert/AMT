@@ -132,34 +132,13 @@ with tab2:
             (c["id"] for c in companies_with_questions if c["fields"]["Name"] == selected_company_overview), None
         )
 
-        # Toon vragen voor geselecteerd bedrijf
-        related_questions = [
-            q for q in all_questions
-            if "Company" in q["fields"] and selected_company_id in q["fields"]["Company"]
-        ]
+        # ➕ Nieuwe vraag toevoegen (eerste zodat st.rerun() werkt)
+        st.markdown("### ➕ Voeg een nieuwe vraag toe")
 
-        with st.form("bulk_form"):
-            st.write(f"**{len(related_questions)} vragen gekoppeld aan {selected_company_overview}**")
-            antwoorden = {}
-            for q in related_questions:
-                q_id = q["id"]
-                vraag = q["fields"].get("Question", "Geen vraagtekst")
-                bestaand = q["fields"].get("Answers", "")
-                antwoorden[q_id] = st.text_area(vraag, value=bestaand, key=f"vraag_{q_id}")
-
-            if st.form_submit_button("📩 Alles opslaan"):
-                for vraag_id, antwoord in antwoorden.items():
-                    questions_table.update(vraag_id, {"Answers": antwoord})
-                st.success("Antwoorden opgeslagen!")
-
-        # === Toevoegen van een nieuwe vraag en antwoord ===
-        st.markdown("---")
-        st.subheader(f"➕ Voeg een nieuwe vraag toe voor **{selected_company_overview}**")
-
-        with st.form("nieuwe_vraag_formulier"):
-            nieuwe_vraag = st.text_area("Nieuwe vraagtekst", key="nieuwe_vraag_input")
-            nieuw_antwoord = st.text_area("Antwoord op de nieuwe vraag", key="nieuwe_antwoord_input")
-            nieuw_robotic_system = st.selectbox("Optioneel: Robotic System koppelen", [""] + robotic_system_options)
+        with st.form("nieuwe_vraag_formulier", clear_on_submit=True):
+            nieuwe_vraag = st.text_area("Vraagtekst", key="nieuwe_vraag_input")
+            nieuw_antwoord = st.text_area("Antwoord", key="nieuwe_antwoord_input")
+            nieuw_robotic_system = st.selectbox("Optioneel: Robotic System koppelen", [""] + robotic_system_options, key="nieuw_robotic_select")
 
             toevoegen = st.form_submit_button("✅ Vraag en antwoord toevoegen")
             if toevoegen:
@@ -175,5 +154,29 @@ with tab2:
                         new_fields["Robotic System"] = nieuw_robotic_system
 
                     questions_table.create(new_fields)
-                    st.success("Nieuwe vraag en antwoord toegevoegd ✅")
-                    st.rerun()
+                    st.success("Nieuwe vraag toegevoegd ✅")
+                    st.rerun()  # herlaadt alles incl. overzicht
+
+        st.markdown("---")
+        st.subheader(f"📝 {selected_company_overview}: bestaande vragen en antwoorden")
+
+        # Toon vragen voor geselecteerd bedrijf
+        updated_questions = questions_table.all()  # opnieuw ophalen na toevoeging
+        related_questions = [
+            q for q in updated_questions
+            if "Company" in q["fields"] and selected_company_id in q["fields"]["Company"]
+        ]
+
+        with st.form("bulk_form"):
+            antwoorden = {}
+            for q in related_questions:
+                q_id = q["id"]
+                vraag = q["fields"].get("Question", "Geen vraagtekst")
+                bestaand = q["fields"].get("Answers", "")
+                antwoorden[q_id] = st.text_area(vraag, value=bestaand, key=f"vraag_{q_id}")
+
+            if st.form_submit_button("📩 Alles opslaan"):
+                for vraag_id, antwoord in antwoorden.items():
+                    questions_table.update(vraag_id, {"Answers": antwoord})
+                st.success("Antwoorden opgeslagen ✅")
+                st.rerun()
