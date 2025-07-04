@@ -1,24 +1,33 @@
+import logging
 import streamlit as st
 from pyairtable import Table
-from pyairtable.formulas import match
+
+# Logging (voor debug)
+logging.basicConfig(level=logging.DEBUG)
 
 # Secrets ophalen
 AIRTABLE_TOKEN = st.secrets["AIRTABLE_TOKEN"]
 BASE_ID = st.secrets["BASE_ID"]
 QUESTIONS_TABLE = "Questions"
 
-# Connectie maken
+# Connectie met Airtable
 table = Table(AIRTABLE_TOKEN, BASE_ID, QUESTIONS_TABLE)
 
-# Vragen ophalen
-records = table.all()
+# Vragen ophalen (met foutafhandeling)
+try:
+    records = table.all()
+except Exception as e:
+    st.error(f"Fout bij ophalen van vragen: {e}")
+    st.stop()
+
+# Filter vragen zonder antwoord
 questions = [r for r in records if not r['fields'].get('Answers')]
 
 if not questions:
     st.success("Alle vragen zijn al beantwoord ✅")
     st.stop()
 
-# Een vraag per keer tonen
+# Een vraag per keer
 index = st.session_state.get("q_index", 0)
 
 if index >= len(questions):
@@ -32,21 +41,12 @@ q_text = q['fields'].get("Question", "Geen vraagtekst")
 st.header("Beantwoord de volgende vraag:")
 st.write(f"**{q_text}**")
 
+# Antwoordveld
 answer = st.text_area("Antwoord", key="answer")
 
-# Ophalen van linked tables (optioneel: cache als performance belangrijk wordt)
-companies_table = Table(AIRTABLE_TOKEN, BASE_ID, "Companies")
-companies = companies_table.all()
-company_names = [c["fields"]["Name"] for c in companies]
-selected_company = st.selectbox("Selecteer bedrijf", [""] + company_names)
-
-robots_table = Table(AIRTABLE_TOKEN, BASE_ID, "Robots")
-robots = robots_table.all()
-robot_names = [r["fields"]["Name"] for r in robots]
-selected_robot = st.selectbox("Selecteer robot", [""] + robot_names)
-
+# Robotic System dropdown
 robotic_system = st.selectbox(
-    "Robotic System", 
+    "Robotic System",
     [""] + ["Da Vinci", "Hugo", "Symani", "Andere"]
 )
 
@@ -64,17 +64,6 @@ with col2:
             "Answers": answer,
             "Robotic System": robotic_system
         }
-
-        # Linken aan de juiste records in Companies en Robots
-        if selected_company:
-            matching = [c for c in companies if c["fields"]["Name"] == selected_company]
-            if matching:
-                update_fields["Company"] = [matching[0]["id"]]
-
-        if selected_robot:
-            matching = [r for r in robots if r["fields"]["Name"] == selected_robot]
-            if matching:
-                update_fields["Robot"] = [matching[0]["id"]]
 
         table.update(q_id, update_fields)
         st.success("Opgeslagen!")
