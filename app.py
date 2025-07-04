@@ -53,7 +53,7 @@ selected_company = st.selectbox("Selecteer bedrijf", [""] + company_names)
 
 robots_table = Table(AIRTABLE_TOKEN, BASE_ID, "Robots")
 robots = robots_table.all()
-robot_names = [r["fields"]["Name"] for r in robots]
+robot_names = [r["fields"]["Robotic System"] for r in robots]
 selected_robot = st.selectbox("Selecteer robot", [""] + robot_names)
 
 robotic_system = st.selectbox(
