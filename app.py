@@ -93,7 +93,8 @@ col1, col2 = st.columns(2)
 with col1:
     if st.button("Skip"):
         st.session_state.q_index = index + 1
-        st.experimental_rerun()
+        st.rerun()
+
 
 with col2:
     if st.button("Opslaan"):
@@ -118,4 +119,5 @@ with col2:
         table.update(q_id, update_fields)
         st.success("Opgeslagen!")
         st.session_state.q_index = index + 1
-        st.experimental_rerun()
+        st.rerun()
+
