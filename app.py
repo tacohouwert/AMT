@@ -1,123 +1,140 @@
-import os
-import logging
 import streamlit as st
+import logging
 from pyairtable import Table
 
-# Logging
-logging.basicConfig(level=logging.DEBUG)
+# Setup logging
+logging.basicConfig(level=logging.INFO)
 
 # Secrets ophalen
 AIRTABLE_TOKEN = st.secrets["AIRTABLE_TOKEN"]
 BASE_ID = st.secrets["BASE_ID"]
 QUESTIONS_TABLE = "Questions"
 
-# Connectie maken met Questions-tabel
-table = Table(AIRTABLE_TOKEN, BASE_ID, QUESTIONS_TABLE)
+# Connectie met Airtable-tabellen
+questions_table = Table(AIRTABLE_TOKEN, BASE_ID, QUESTIONS_TABLE)
+companies_table = Table(AIRTABLE_TOKEN, BASE_ID, "Companies")
+robots_table = Table(AIRTABLE_TOKEN, BASE_ID, "Robots")
 
-# Vraaggegevens ophalen
+# Alle data ophalen
 try:
-    records = table.all()
+    all_questions = questions_table.all()
+    companies = companies_table.all()
+    robots = robots_table.all()
 except Exception as e:
-    st.error(f"Fout bij ophalen van vragen: {e}")
-    st.write("→ Controleer of je tabelnaam exact klopt met Airtable.")
+    st.error(f"Fout bij ophalen van data: {e}")
     st.stop()
 
-questions = [r for r in records if not r['fields'].get('Answers')]
-
-if not questions:
-    st.success("Alle vragen zijn al beantwoord ✅")
-    st.stop()
-
-# Huidige vraag bepalen
-index = st.session_state.get("q_index", 0)
-if index >= len(questions):
-    st.success("Je hebt alle vragen behandeld.")
-    st.stop()
-
-q = questions[index]
-q_id = q['id']
-q_text = q['fields'].get("Question", "Geen vraagtekst")
-
-st.header("Beantwoord de volgende vraag:")
-st.write(f"**{q_text}**")
-
-answer = st.text_area("Antwoord", key="answer")
-
-# Helperfunctie om naam op te halen bij ID
+# Helper om naam op te halen
 def get_name_by_id(records, record_id, name_field="Name"):
     for r in records:
         if r["id"] == record_id:
             return r["fields"].get(name_field, "Onbekend")
     return "Onbekend"
 
-# Companies ophalen
-companies = Table(AIRTABLE_TOKEN, BASE_ID, "Companies").all()
+# Company- en robotnamen mappen
 company_names = [c["fields"]["Name"] for c in companies]
-
-# Huidige gelinkte company (optioneel)
-company_id = q["fields"].get("Company", [None])[0]
-selected_company_name = get_name_by_id(companies, company_id, name_field="Name") if company_id else ""
-
-selected_company = st.selectbox(
-    "Selecteer bedrijf",
-    [""] + company_names,
-    index=([""] + company_names).index(selected_company_name) if selected_company_name in company_names else 0
-)
-
-# Robots ophalen (naamveld = "Robotic System")
-robots = Table(AIRTABLE_TOKEN, BASE_ID, "Robots").all()
 robot_names = [r["fields"].get("Robotic System", "Onbekend") for r in robots]
+robotic_system_options = sorted(list(set(robot_names)))  # dynamisch uit robot-tabel
 
-# Huidige gelinkte robot
-robot_id = q["fields"].get("Robot", [None])[0]
-selected_robot_name = get_name_by_id(robots, robot_id, name_field="Robotic System") if robot_id else ""
+# Tabs
+tab1, tab2 = st.tabs(["🧩 Individueel", "🗂️ Per bedrijf"])
 
-selected_robot = st.selectbox(
-    "Selecteer robot",
-    [""] + robot_names,
-    index=([""] + robot_names).index(selected_robot_name) if selected_robot_name in robot_names else 0
-)
+# === TAB 1: INDIVIDUEEL FORMULIER ===
+with tab1:
+    unanswered = [q for q in all_questions if not q["fields"].get("Answers")]
+    if not unanswered:
+        st.success("Alle vragen zijn al beantwoord ✅")
+    else:
+        q_index = st.session_state.get("q_index", 0)
+        if q_index >= len(unanswered):
+            st.success("Je hebt alle vragen behandeld.")
+            st.stop()
 
-# Dynamische Robotic System dropdown op basis van unieke waarden uit robot_names
-robotic_system_options = sorted(list(set(robot_names)))
-current_value = q["fields"].get("Robotic System", "")
-robotic_system = st.selectbox(
-    "Robotic System",
-    [""] + robotic_system_options,
-    index=([""] + robotic_system_options).index(current_value) if current_value in robotic_system_options else 0
-)
+        q = unanswered[q_index]
+        q_id = q["id"]
+        q_text = q["fields"].get("Question", "Geen vraagtekst")
 
-# Actieknoppen
-col1, col2 = st.columns(2)
+        st.header("Beantwoord de volgende vraag:")
+        st.write(f"**{q_text}**")
 
-with col1:
-    if st.button("Skip"):
-        st.session_state.q_index = index + 1
-        st.rerun()
+        answer = st.text_area("Antwoord", key="answer")
 
+        # Company
+        company_id = q["fields"].get("Company", [None])[0]
+        selected_company_name = get_name_by_id(companies, company_id) if company_id else ""
+        selected_company = st.selectbox(
+            "Selecteer bedrijf",
+            [""] + company_names,
+            index=([""] + company_names).index(selected_company_name) if selected_company_name in company_names else 0
+        )
 
-with col2:
-    if st.button("Opslaan"):
-        update_fields = {
-            "Answers": answer,
-            "Robotic System": robotic_system
-        }
+        # Robot
+        robot_id = q["fields"].get("Robot", [None])[0]
+        selected_robot_name = get_name_by_id(robots, robot_id, name_field="Robotic System") if robot_id else ""
+        selected_robot = st.selectbox(
+            "Selecteer robot",
+            [""] + robot_names,
+            index=([""] + robot_names).index(selected_robot_name) if selected_robot_name in robot_names else 0
+        )
 
-        # Company koppelen
-        if selected_company:
-            matching = [c for c in companies if c["fields"]["Name"] == selected_company]
-            if matching:
-                update_fields["Company"] = [matching[0]["id"]]
+        # Robotic System
+        current_system = q["fields"].get("Robotic System", "")
+        robotic_system = st.selectbox(
+            "Robotic System",
+            [""] + robotic_system_options,
+            index=([""] + robotic_system_options).index(current_system) if current_system in robotic_system_options else 0
+        )
 
-        # Robot koppelen op basis van 'Robotic System'
-        if selected_robot:
-            matching = [r for r in robots if r["fields"].get("Robotic System") == selected_robot]
-            if matching:
-                update_fields["Robot"] = [matching[0]["id"]]
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Skip"):
+                st.session_state.q_index = q_index + 1
+                st.rerun()
+        with col2:
+            if st.button("Opslaan"):
+                update = {
+                    "Answers": answer,
+                    "Robotic System": robotic_system
+                }
+                if selected_company:
+                    match = [c for c in companies if c["fields"]["Name"] == selected_company]
+                    if match:
+                        update["Company"] = [match[0]["id"]]
+                if selected_robot:
+                    match = [r for r in robots if r["fields"].get("Robotic System") == selected_robot]
+                    if match:
+                        update["Robot"] = [match[0]["id"]]
 
-        # Update uitvoeren in Airtable
-        table.update(q_id, update_fields)
-        st.success("Opgeslagen!")
-        st.session_state.q_index = index + 1
-        st.rerun()
+                questions_table.update(q_id, update)
+                st.success("Opgeslagen!")
+                st.session_state.q_index = q_index + 1
+                st.rerun()
 
+# === TAB 2: OVERZICHT PER BEDRIJF ===
+with tab2:
+    st.header("Antwoorden per bedrijf invullen")
+
+    selected_company_overview = st.selectbox("Kies een bedrijf", company_names, key="company_overview")
+    selected_company_id = next((c["id"] for c in companies if c["fields"]["Name"] == selected_company_overview), None)
+
+    related_questions = [
+        q for q in all_questions
+        if "Company" in q["fields"] and selected_company_id in q["fields"]["Company"]
+    ]
+
+    if not related_questions:
+        st.info("Geen vragen gevonden voor dit bedrijf.")
+    else:
+        with st.form("bulk_form"):
+            st.write(f"**{len(related_questions)} vragen gekoppeld aan {selected_company_overview}**")
+            antwoorden = {}
+            for q in related_questions:
+                q_id = q["id"]
+                vraag = q["fields"].get("Question", "Geen vraagtekst")
+                bestaand = q["fields"].get("Answers", "")
+                antwoorden[q_id] = st.text_area(vraag, value=bestaand, key=f"vraag_{q_id}")
+
+            if st.form_submit_button("📩 Alles opslaan"):
+                for vraag_id, antwoord in antwoorden.items():
+                    questions_table.update(vraag_id, {"Answers": antwoord})
+                st.success("Antwoorden opgeslagen!")
