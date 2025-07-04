@@ -64,7 +64,7 @@ selected_company = st.selectbox(
     index=([""] + company_names).index(selected_company_name) if selected_company_name in company_names else 0
 )
 
-# Robots ophalen (LET OP: Robotic System = naamveld hier)
+# Robots ophalen (naamveld = "Robotic System")
 robots = Table(AIRTABLE_TOKEN, BASE_ID, "Robots").all()
 robot_names = [r["fields"].get("Robotic System", "Onbekend") for r in robots]
 
@@ -78,10 +78,13 @@ selected_robot = st.selectbox(
     index=([""] + robot_names).index(selected_robot_name) if selected_robot_name in robot_names else 0
 )
 
-# Robotic System dropdown (losstaand van Robot)
+# Dynamische Robotic System dropdown op basis van unieke waarden uit robot_names
+robotic_system_options = sorted(list(set(robot_names)))
+current_value = q["fields"].get("Robotic System", "")
 robotic_system = st.selectbox(
-    "Robotic System", 
-    [""] + ["Da Vinci", "Hugo", "Symani", "Andere"]
+    "Robotic System",
+    [""] + robotic_system_options,
+    index=([""] + robotic_system_options).index(current_value) if current_value in robotic_system_options else 0
 )
 
 # Actieknoppen
