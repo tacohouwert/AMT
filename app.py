@@ -114,31 +114,30 @@ with tab1:
 with tab2:
     st.header("Antwoorden per bedrijf invullen")
 
-    # Verzamel unieke company ID's die in de vragen voorkomen
+    # Verzamel unieke company ID's uit vragen
     company_ids_in_questions = set()
     for q in all_questions:
         if "Company" in q["fields"]:
             company_ids_in_questions.update(q["fields"]["Company"])
-    
-    # Filter alleen bedrijven die in questions voorkomen
+
+    # Filter bedrijven met gekoppelde vragen
     companies_with_questions = [c for c in companies if c["id"] in company_ids_in_questions]
     company_names_with_questions = [c["fields"]["Name"] for c in companies_with_questions]
-    
+
     if not company_names_with_questions:
         st.info("Er zijn geen bedrijven met gekoppelde vragen.")
     else:
         selected_company_overview = st.selectbox("Kies een bedrijf", company_names_with_questions, key="company_overview")
-        selected_company_id = next((c["id"] for c in companies_with_questions if c["fields"]["Name"] == selected_company_overview), None)
+        selected_company_id = next(
+            (c["id"] for c in companies_with_questions if c["fields"]["Name"] == selected_company_overview), None
+        )
 
+        # Toon vragen voor geselecteerd bedrijf
+        related_questions = [
+            q for q in all_questions
+            if "Company" in q["fields"] and selected_company_id in q["fields"]["Company"]
+        ]
 
-    related_questions = [
-        q for q in all_questions
-        if "Company" in q["fields"] and selected_company_id in q["fields"]["Company"]
-    ]
-
-    if not related_questions:
-        st.info("Geen vragen gevonden voor dit bedrijf.")
-    else:
         with st.form("bulk_form"):
             st.write(f"**{len(related_questions)} vragen gekoppeld aan {selected_company_overview}**")
             antwoorden = {}
@@ -152,3 +151,30 @@ with tab2:
                 for vraag_id, antwoord in antwoorden.items():
                     questions_table.update(vraag_id, {"Answers": antwoord})
                 st.success("Antwoorden opgeslagen!")
+
+        # === Toevoegen van een nieuwe vraag ===
+        st.markdown("---")
+        st.subheader(f"➕ Voeg een nieuwe vraag toe voor **{selected_company_overview}**")
+
+        with st.form("nieuwe_vraag_formulier"):
+            nieuwe_vraag = st.text_area("Nieuwe vraagtekst", key="nieuwe_vraag_input")
+
+            # Optioneel: Robotic System al meegeven
+            nieuw_robotic_system = st.selectbox("Optioneel: Robotic System koppelen", [""] + robotic_system_options)
+
+            toevoegen = st.form_submit_button("✅ Vraag toevoegen")
+            if toevoegen:
+                if not nieuwe_vraag.strip():
+                    st.warning("Voer een vraagtekst in.")
+                else:
+                    new_fields = {
+                        "Question": nieuwe_vraag.strip(),
+                        "Company": [selected_company_id]
+                    }
+                    if nieuw_robotic_system:
+                        new_fields["Robotic System"] = nieuw_robotic_system
+
+                    questions_table.create(new_fields)
+                    st.success("Vraag toegevoegd ✅")
+                    st.rerun()
+
