@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.DEBUG)
 # Secrets ophalen
 AIRTABLE_TOKEN = st.secrets["AIRTABLE_TOKEN"]
 BASE_ID = st.secrets["BASE_ID"]
-QUESTIONS_TABLE = "Questions"
+QUESTIONS_TABLE = "Companies"
 
 # Connectie met Airtable
 table = Table(AIRTABLE_TOKEN, BASE_ID, QUESTIONS_TABLE)
