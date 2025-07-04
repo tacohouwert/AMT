@@ -152,29 +152,28 @@ with tab2:
                     questions_table.update(vraag_id, {"Answers": antwoord})
                 st.success("Antwoorden opgeslagen!")
 
-        # === Toevoegen van een nieuwe vraag ===
+        # === Toevoegen van een nieuwe vraag en antwoord ===
         st.markdown("---")
         st.subheader(f"➕ Voeg een nieuwe vraag toe voor **{selected_company_overview}**")
 
         with st.form("nieuwe_vraag_formulier"):
             nieuwe_vraag = st.text_area("Nieuwe vraagtekst", key="nieuwe_vraag_input")
-
-            # Optioneel: Robotic System al meegeven
+            nieuw_antwoord = st.text_area("Antwoord op de nieuwe vraag", key="nieuwe_antwoord_input")
             nieuw_robotic_system = st.selectbox("Optioneel: Robotic System koppelen", [""] + robotic_system_options)
 
-            toevoegen = st.form_submit_button("✅ Vraag toevoegen")
+            toevoegen = st.form_submit_button("✅ Vraag en antwoord toevoegen")
             if toevoegen:
                 if not nieuwe_vraag.strip():
                     st.warning("Voer een vraagtekst in.")
                 else:
                     new_fields = {
                         "Question": nieuwe_vraag.strip(),
+                        "Answers": nieuw_antwoord.strip(),
                         "Company": [selected_company_id]
                     }
                     if nieuw_robotic_system:
                         new_fields["Robotic System"] = nieuw_robotic_system
 
                     questions_table.create(new_fields)
-                    st.success("Vraag toegevoegd ✅")
+                    st.success("Nieuwe vraag en antwoord toegevoegd ✅")
                     st.rerun()
-
