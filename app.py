@@ -114,8 +114,22 @@ with tab1:
 with tab2:
     st.header("Antwoorden per bedrijf invullen")
 
-    selected_company_overview = st.selectbox("Kies een bedrijf", company_names, key="company_overview")
-    selected_company_id = next((c["id"] for c in companies if c["fields"]["Name"] == selected_company_overview), None)
+    # Verzamel unieke company ID's die in de vragen voorkomen
+    company_ids_in_questions = set()
+    for q in all_questions:
+        if "Company" in q["fields"]:
+            company_ids_in_questions.update(q["fields"]["Company"])
+    
+    # Filter alleen bedrijven die in questions voorkomen
+    companies_with_questions = [c for c in companies if c["id"] in company_ids_in_questions]
+    company_names_with_questions = [c["fields"]["Name"] for c in companies_with_questions]
+    
+    if not company_names_with_questions:
+        st.info("Er zijn geen bedrijven met gekoppelde vragen.")
+    else:
+        selected_company_overview = st.selectbox("Kies een bedrijf", company_names_with_questions, key="company_overview")
+        selected_company_id = next((c["id"] for c in companies_with_questions if c["fields"]["Name"] == selected_company_overview), None)
+
 
     related_questions = [
         q for q in all_questions
