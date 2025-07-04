@@ -18,7 +18,9 @@ try:
     records = table.all()
 except Exception as e:
     st.error(f"Fout bij ophalen van vragen: {e}")
+    st.write("→ Controleer of je tabelnaam exact klopt met Airtable.")
     st.stop()
+
 
 # Filter vragen zonder antwoord
 questions = [r for r in records if not r['fields'].get('Answers')]
