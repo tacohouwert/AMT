@@ -138,7 +138,6 @@ with tab2:
         with st.form("nieuwe_vraag_formulier", clear_on_submit=True):
             nieuwe_vraag = st.text_area("Vraagtekst", key="nieuwe_vraag_input")
             nieuw_antwoord = st.text_area("Antwoord", key="nieuwe_antwoord_input")
-            nieuw_robotic_system = st.selectbox("Optioneel: Robotic System koppelen", [""] + robotic_system_options, key="nieuw_robotic_select")
 
             toevoegen = st.form_submit_button("✅ Vraag en antwoord toevoegen")
             if toevoegen:
